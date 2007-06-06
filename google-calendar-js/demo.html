@@ -1,0 +1,79 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"    
+		"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml">
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+	</head>
+<body bgcolor="#B7FF73">
+
+<div id="test"></div>
+<div id="test2"></div>
+<script language="JavaScript" type="text/javascript" src="egcal.js" charset="utf-8"></script>
+<iframe id="icalendar" width="480px" height="800px" allowtransparency="true" frameborder="0" style="border:solid 1px;">
+</iframe>
+
+<script language="JavaScript" type="text/javascript">
+	  var content = "<html><body bgcolor='transparent'></body></html>";
+    var targetName = "icalendar";
+   	var targetFrame = document.getElementById(targetName);
+     
+    var doc = targetFrame.contentDocument;
+    if (doc == undefined || doc == null)
+            doc = targetFrame.contentWindow.document;
+        doc.open();
+        doc.write(content);
+        doc.close();	
+</script>
+
+
+<script language="JavaScript" type="text/javascript">
+var gcalfeeds = [ 
+								{"id":"oplk36dhta1q9l9ao0ko2imnbs%40group.calendar.google.com", "color":"#528a00" },
+//									{"id":"93a20f6ujls11lk9e74o1a1428%40group.calendar.google.com", "color":"#de5510"  },
+									{"id":"d3m1a40k4kbgs9bvq1c1bi54uc%40group.calendar.google.com", "color":"#4cb052"  },
+									{"id":"5ebffb9ql9kaak4i1c1m4j38i0%40group.calendar.google.com", "color":"#ff3352"  },
+									{"id":"c51rl5e7mdo1hb9i2bhv4of9os%40group.calendar.google.com", "color":"#0033f2"  }
+//									{"id":"t9j4m79ev7ungtjelsobkohl2s%40group.calendar.google.com", "color":"#ff33f2"  }
+								];
+/*
+try {
+  xmlhttp = new ActiveXObject("Msxml2.XMLHTTP");
+ } catch (e1) {
+  try {
+   xmlhttp = new ActiveXObject("Microsoft.XMLHTTP");
+  } catch (e1) {
+  	try {
+  		xmlhttp = new XMLHttpRequest();
+  	}
+    catch (e3) {
+    	xmlhttp = false;
+    }
+  }
+}
+ 
+xmlhttp.open("GET", "http://www.google.com/calendar/embed?src=5ebffb9ql9kaak4i1c1m4j38i0%40group.calendar.google.com",true);
+xmlhttp.onreadystatechange=function() {
+		if (xmlhttp.readyState==4 && xmlhttp.status == 200) {
+		var css_id = xmlhttp.responseText.substring(xmlhttp.responseText.indexOf('<link href="embed/')+18, 
+	       							xmlhttp.responseText.indexOf('embedcompiled.css'));
+
+		fundamental = new EGCalendarFundamental("fundamental", 0);
+		fundamental.css_id = css_id;
+		var egcalendar = new EGCalendar("egcalendar", document.getElementById("icalendar"),  gcalfeeds, fundamental);
+	}
+}
+
+xmlhttp.send(null);
+*/
+
+		var css_id = "3d6b50f6c45e613af5d7d1e8e686aa58";
+
+		fundamental = new EGCalendarFundamental("fundamental", 0);
+		fundamental.css_id = css_id;
+		var egcalendar = new EGCalendar("egcalendar", document.getElementById("icalendar"),  gcalfeeds, fundamental);
+
+
+</script>
+
+</body>
+</html>
