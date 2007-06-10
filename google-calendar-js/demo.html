@@ -31,7 +31,7 @@ var gcalfeeds = [
 								{"id":"oplk36dhta1q9l9ao0ko2imnbs%40group.calendar.google.com", "color":"#528a00" },
 //									{"id":"93a20f6ujls11lk9e74o1a1428%40group.calendar.google.com", "color":"#de5510"  },
 									{"id":"d3m1a40k4kbgs9bvq1c1bi54uc%40group.calendar.google.com", "color":"#4cb052"  },
-									{"id":"5ebffb9ql9kaak4i1c1m4j38i0%40group.calendar.google.com", "color":"#ff3352"  },
+//									{"id":"5ebffb9ql9kaak4i1c1m4j38i0%40group.calendar.google.com", "color":"#ff3352"  },
 									{"id":"c51rl5e7mdo1hb9i2bhv4of9os%40group.calendar.google.com", "color":"#0033f2"  }
 //									{"id":"t9j4m79ev7ungtjelsobkohl2s%40group.calendar.google.com", "color":"#ff33f2"  }
 								];
@@ -65,11 +65,8 @@ xmlhttp.onreadystatechange=function() {
 
 xmlhttp.send(null);
 */
-
-		var css_id = "3d6b50f6c45e613af5d7d1e8e686aa58";
-
 		fundamental = new EGCalendarFundamental("fundamental", 0);
-		fundamental.css_id = css_id;
+		fundamental.debug = false;
 		var egcalendar = new EGCalendar("egcalendar", document.getElementById("icalendar"),  gcalfeeds, fundamental);
 
 
