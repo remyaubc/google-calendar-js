@@ -23,7 +23,7 @@ function EGCalendarFundamental(name, locale)
 	else
 		this.locale = locale;
 
-	this.css_id = "";
+	this.css_id = null;
 	this.gcal_timezone = "GMT+00:00";
 	this.debug = false;
 	this.gcal_count = 0;
@@ -712,7 +712,7 @@ EGCalendarFundamental.prototype.getMonthTable = function(target, year, month, ev
 				}	
 				
 				
-				if (eventsArray != null && eventsArray[(w.getTime() - begin.getTime())/EGCalendarFundamental.oneday] != null)					
+				if (eventsArray != null && eventsArray[(w.getTime() - begin.getTime())/EGCalendarFundamental.oneday] != null)
 				{
 					eventsArray[(w.getTime() - begin.getTime())/EGCalendarFundamental.oneday] = EGCalendarFundamental.sortDayEvent(eventsArray[(w.getTime() - begin.getTime())/EGCalendarFundamental.oneday]);
 					
@@ -791,6 +791,13 @@ EGCalendarFundamental.prototype.getMonthTable = function(target, year, month, ev
 				  ret += '<td class="' + cellClass + '" ' + eventSpan + '><div class="' + eventClass + '"><div class="t2 tbg" ' + divStyle + '></div><div class="t0 tbg" ' + divStyle + '><a class="event-link" ' + linkStyle + 'href="' + link + '" target="_blank"><span class="event-summary">' + title + '</span></a></div><div class="t2 tbg" ' + divStyle + '></div></div>'
 				   + '</td>';
 				  
+					} else if (eventsArray[(w.getTime() - begin.getTime())/EGCalendarFundamental.oneday][0].rank != 0) {
+						cellClass += "cell-empty cell-empty-below";
+						
+						if (this.debug)
+							ret += '<td class="' + cellClass + '" >n</td>';
+						else
+							ret += '<td class="' + cellClass + '" ></td>';						
 					}
 				
 				  if (j != 0)
@@ -801,21 +808,29 @@ EGCalendarFundamental.prototype.getMonthTable = function(target, year, month, ev
 
 					//} while (w.getTime() == t.getTime());
 				}
-			//	else if (eventsArray != null  && eventsArray[(w.getTime() - begin.getTime())/EGCalendarFundamental.oneday] == null)
-		//		{
-		//		} 
+//				else if (eventsArray != null  && eventsArray[(w.getTime() - begin.getTime())/EGCalendarFundamental.oneday] == null)
+//				{
+
+//				} 
 		else
 				{
 					if (j == 0)
 					{
 						cellClass += "cell-empty cell-empty-below";
 						
-						ret += '<td class="' + cellClass + '" ></td>';
+						if (this.debug)
+							ret += '<td class="' + cellClass + '" >k</td>';
+						else
+							ret += '<td class="' + cellClass + '" ></td>';
 					}
 					else
 					{
 						cellClass += "cell-empty cell-last-row";
-						ret += '<td class="' + cellClass + '" rowspan="' + max_events_in_this_week + '" ></td>';
+						
+						if (this.debug)
+							ret += '<td class="' + cellClass + '" rowspan="' + max_events_in_this_week + '" >m</td>';
+						else
+						  ret += '<td class="' + cellClass + '" rowspan="' + max_events_in_this_week + '" ></td>';
 						
 					}
 				}
@@ -872,9 +887,19 @@ EGCalendarFundamental.prototype.getMonthTable = function(target, year, month, ev
 
 EGCalendarFundamental.prototype.gcalendar = function(targetFrame, events) {
 	var prefix = '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"><html>';
+	
+	var doozer_css = 'http://nsquare.net/gcal.css'; // apache redirect to current css 	
+	var embed_css = 'http://nsquare.net/gcalembed.css'; // apache redirect to current css 
+	
+	if (this.css_id != null)
+	{
+		'http://www.google.com/calendar/' + this.css_id + 'doozercompiled.css';
+		'http://www.google.com/calendar/embed/' + this.css_id + 'embedcompiled.css';
+	}
+	
 	var header = '<head><title></title>\n'
-	    + '<link href="http://www.google.com/calendar/' + this.css_id + 'doozercompiled.css" type="text/css" rel="stylesheet">\n'		
-			+ '<link href="http://www.google.com/calendar/embed/' + this.css_id + 'embedcompiled.css" type="text/css" rel="stylesheet">\n'
+	    + '<link href="' + doozer_css + '" type="text/css" rel="stylesheet">\n'		
+			+ '<link href="' + embed_css + '" type="text/css" rel="stylesheet">\n'
 			+ '\<script src="egcal.js" type="text/javascript" charset="utf-8"><\/script>\n'
 			+ '<style>body{padding:0;margin:.1em .1em .1em;font-size:10pt} #nav td{padding-top:.1em; padding-bottom:4px; margin:0; border:none}#footer #poweredby-link{position:relative;top:-45px;left:-12px;float:right;clear:right}'
 			+ '#footer #poweredby-link img{filter:progid:DXImageTransform.Microsoft.AlphaImageLoader(src="http://www.google.com/calendar/images/ext/poweredby.png",sizingMethod="scale")}'
