@@ -19,14 +19,17 @@ function EGCalendarFundamental(name, locale)
 	this.name = name;
 	
 	if (locale == null)
-		this.locale = 0;
+		this.gcal_locale = 0;
 	else
-		this.locale = locale;
+		this.gcal_locale = locale;
 
-	this.css_id = null;
-	this.gcal_timezone = "GMT+00:00";
-	this.debug = false;
+	this.gcal_css_id = null;
+//	this.gcal_timezone = "GMT+00:00";
+//	this.gcal_gmtoffset = "GMT+00:00";
+//	this.gcal_tzoffset = 0;
+	this.gcal_debug = false;
 	this.gcal_count = 0;
+	this.gcal_wrap = true;
 	this.gcal_feedkeys = new Array(0);
 	this.gcal_events = new Array(0);
 	this.gcal_size = 2;
@@ -45,6 +48,84 @@ EGCalendarFundamental.timezones = { "Pacific/Apia":"GMT-11:00", "Pacific/Midway"
 "Asia/Qatar":"GMT+03:00", "Asia/Riyadh":"GMT+03:00", "Europe/Moscow":"GMT+03:00", "Indian/Antananarivo":"GMT+03:00", "Indian/Comoro":"GMT+03:00", "Indian/Mayotte":"GMT+03:00", "Asia/Tehran":"GMT+03:30", "Asia/Baku":"GMT+04:00", "Asia/Dubai":"GMT+04:00", "Asia/Muscat":"GMT+04:00", "Asia/Tbilisi":"GMT+04:00", "Asia/Yerevan":"GMT+04:00", "Europe/Samara":"GMT+04:00", "Indian/Mahe":"GMT+04:00", "Indian/Mauritius":"GMT+04:00", "Indian/Reunion":"GMT+04:00", "Asia/Kabul":"GMT+04:30", "Asia/Aqtau":"GMT+05:00", "Asia/Aqtobe":"GMT+05:00", "Asia/Ashgabat":"GMT+05:00", "Asia/Dushanbe":"GMT+05:00", "Asia/Karachi":"GMT+05:00", "Asia/Tashkent":"GMT+05:00", "Asia/Yekaterinburg":"GMT+05:00", "Indian/Kerguelen":"GMT+05:00", "Indian/Maldives":"GMT+05:00", "Asia/Calcutta":"GMT+05:30", "Asia/Colombo":"GMT+05:30", "Antarctica/Mawson":"GMT+06:00", "Antarctica/Vostok":"GMT+06:00", "Asia/Almaty":"GMT+06:00", "Asia/Bishkek":"GMT+06:00", "Asia/Dhaka":"GMT+06:00", "Asia/Omsk":"GMT+06:00", "Asia/Thimphu":"GMT+06:00", "Indian/Chagos":"GMT+06:00", "Asia/Rangoon":"GMT+06:30",
 "Indian/Cocos":"GMT+06:30", "Antarctica/Davis":"GMT+07:00", "Asia/Bangkok":"GMT+07:00", "Asia/Hovd":"GMT+07:00", "Asia/Jakarta":"GMT+07:00", "Asia/Krasnoyarsk":"GMT+07:00", "Asia/Phnom_Penh":"GMT+07:00", "Asia/Saigon":"GMT+07:00", "Asia/Vientiane":"GMT+07:00", "Indian/Christmas":"GMT+07:00", "Antarctica/Casey":"GMT+08:00", "Asia/Brunei":"GMT+08:00", "Asia/Hong_Kong":"GMT+08:00", "Asia/Irkutsk":"GMT+08:00", "Asia/Kuala_Lumpur":"GMT+08:00", "Asia/Macau":"GMT+08:00", "Asia/Makassar":"GMT+08:00", "Asia/Manila":"GMT+08:00", "Asia/Shanghai":"GMT+08:00", "Asia/Singapore":"GMT+08:00", "Asia/Taipei":"GMT+08:00", "Asia/Ulaanbaatar":"GMT+08:00", "Australia/Perth":"GMT+08:00", "Asia/Choibalsan":"GMT+09:00", "Asia/Dili":"GMT+09:00", "Asia/Jayapura":"GMT+09:00", "Asia/Pyongyang":"GMT+09:00", "Asia/Seoul":"GMT+09:00", "Asia/Tokyo":"GMT+09:00", "Asia/Yakutsk":"GMT+09:00", "Pacific/Palau":"GMT+09:00", "Australia/Adelaide":"GMT+09:30", "Australia/Darwin":"GMT+09:30", "Asia/Vladivostok":"GMT+10:00", "Australia/Brisbane":"GMT+10:00", "Australia/Hobart":"GMT+10:00",
 "Australia/Sydney":"GMT+10:00", "Pacific/Guam":"GMT+10:00", "Pacific/Port_Moresby":"GMT+10:00", "Pacific/Saipan":"GMT+10:00", "Pacific/Truk":"GMT+10:00", "Asia/Magadan":"GMT+11:00", "Pacific/Efate":"GMT+11:00", "Pacific/Guadalcanal":"GMT+11:00", "Pacific/Kosrae":"GMT+11:00", "Pacific/Noumea":"GMT+11:00", "Pacific/Ponape":"GMT+11:00", "Pacific/Norfolk":"GMT+11:30", "Asia/Kamchatka":"GMT+12:00", "Pacific/Auckland":"GMT+12:00", "Pacific/Fiji":"GMT+12:00", "Pacific/Funafuti":"GMT+12:00", "Pacific/Kwajalein":"GMT+12:00", "Pacific/Majuro":"GMT+12:00", "Pacific/Nauru":"GMT+12:00", "Pacific/Tarawa":"GMT+12:00", "Pacific/Wake":"GMT+12:00", "Pacific/Wallis":"GMT+12:00", "Pacific/Enderbury":"GMT+13:00", "Pacific/Tongatapu":"GMT+13:00", "Pacific/Kiritimati":"GMT+14:00" };
+
+EGCalendarFundamental.timezone2Offset = function(tz)
+{
+	offset = EGCalendarFundamental.timezones[tz];
+	var sign = offset.substr(3,1) == "+" ? 1 : -1;
+	var hr = offset.substr(4,2);
+	var min = offset.substr(7,8);
+	
+	return sign * hr * 3600000 + min * 60000; 
+}
+
+EGCalendarFundamental.minuteOffset2GMTOffset = function(m)
+{
+	var result = "GMT";
+	
+	if (m>0) result += "+"; else { m = -m; result += "-"; }
+		
+	result += EGCalendarFundamental.leftPadding("" + Math.floor(m/60), '0', 2);
+	result += ":" + EGCalendarFundamental.leftPadding("" + m %60, '0', 2);
+	
+	return result;
+}
+
+function EGCalTimezone(tz)
+{	
+
+	var gmtOffset = EGCalTimezone.getGMTOffsetByTimezone(tz);
+	
+	if (gmtOffset == null) throw "Invalid timezone";
+
+	var timezone = tz;
+
+	this.getTimezone = function() { return timezone; };
+	this.getGMTOffset= function() { return gmtOffset; };
+	
+	/*
+	if (isNaN(tz_offset))
+	{
+		if ((result = tz_offset.match(/(GMT|)(([+-])(\d{2})(:?)(\d{2}))$/)) != null)
+		{
+			document.getElementById("test2").innerHTML =  result[0] + "/" + result[1] + "/" + result[2] + "/" + result[3] + "/" + result[4] + "/" + result[5] + "/" + result[6];
+			tz_offset = parseInt(result[4], 10) * 60 + parseInt(result[6], 10);
+			if (result[3] == '-') tz_offset = - tz_offset;
+		}
+	}
+
+	offsetMinute = tz_offset;*/
+}
+
+EGCalTimezone.prototype.getOffset = function() 
+{
+	var gmtOffset = this.getGMTOffset();
+	var sign = gmtOffset.substr(3,1) == "+" ? 1 : -1;
+	var hr = gmtOffset.substr(4,2);
+	var min = gmtOffset.substr(7,8);
+	
+	return sign * hr * 3600000 + min * 60000; 	
+};
+
+EGCalTimezone.prototype.getTimezoneByGMTOffset = EGCalTimezone.getTimezoneByGMTOffset;
+
+EGCalTimezone.getTimezoneByGMTOffset = function(gmtoffset)
+{
+	for(key in EGCalendarFundamental.timezones)
+		if (EGCalendarFundamental.timezones[key] == gmtoffset) 
+			return key;
+	
+	return null;
+}
+
+EGCalTimezone.getGMTOffsetByTimezone = function(timezone)
+{
+	for(key in EGCalendarFundamental.timezones)
+		if (key == timezone) 
+			return EGCalendarFundamental.timezones[key];
+	
+	return null;
+}
 
 EGCalendarFundamental.localeData = [
 		{ "Today":"Today", 
@@ -65,43 +146,43 @@ EGCalendarFundamental.localeData = [
 			"Timezone":"時區：", "PoweredBy":"由 Google 日曆提供:", "Subscribe":"使用" }
 	];
 
-EGCalendarFundamental.timezone2Offset = function(tz)
-{
-	offset = EGCalendarFundamental.timezones[tz];
-	var sign = offset.substr(3,1) == "+" ? 1 : -1;
-	var hr = offset.substr(4,2);
-	var min = offset.substr(7,8);
-	
-	return sign * hr * 3600000 + min * 60000; 
-}
 
-EGCalendarFundamental.prototype.dateFormat = function(f, d)
+EGCalendarFundamental.prototype.dateFormat = function(f, d, utc)
 {
     if (!this.valueOf())
         return '';
+        
+    var date = utc ? d.getUTCDate(): d.getDate();
+    var day = utc ? d.getUTCDay() : d.getDay();
+    var month = utc ? d.getUTCMonth() : d.getMonth();
+    var year = utc ? d.getUTCFullYear() : d.getFullYear();
+    var hours = utc ? d.getUTCHours() : d.getHours();
+    var minutes = utc ? d.getUTCMinutes() : d.getMinutes();
+    var seconds = utc ? d.getUTCSeconds() : d.getSeconds();
     
-    var locale = this.locale;
+    var locale = this.gcal_locale;
 
         function rep($1)
         {
-            switch ($1.toLowerCase())
+            switch ($1)
             {
-            case 'yyyy': return d.getFullYear();
-            case 'mmmm': return EGCalendarFundamental.localeData[locale].MonthNames[d.getMonth()];
+            case 'yyyy': return year;
+            case 'mmmm': return EGCalendarFundamental.localeData[locale].MonthNames[month];
             case 'mmm':  
             						if (EGCalendarFundamental.localeData[locale].MonthShortNames == null) 
-            							return EGCalendarFundamental.localeData[locale].MonthNames[d.getMonth()].substr(0, 3);
+            							return EGCalendarFundamental.localeData[locale].MonthNames[month].substr(0, 3);
             						else
-            							return EGCalendarFundamental.localeData[locale].MonthNames[d.getMonth()];            							
-            case 'mm':   return EGCalendarFundamental.leftPadding("" + (d.getMonth() + 1), '0', 2);
-            case 'm':   return "" + (d.getMonth() + 1);
-            case 'dddd': return gsDayNames[d.getDay()];
-            case 'ddd':  return gsDayNames[d.getDay()].substr(0, 3);
-            case 'dd':   return d.getDate().zf(2);
-            case 'hh':   return ((h = d.getHours() % 12) ? h : 12).zf(2);
-            case 'nn':   return d.getMinutes().zf(2);
-            case 'ss':   return d.getSeconds().zf(2);
-            case 'a/p':  return d.getHours() < 12 ? 'a' : 'p';
+            							return EGCalendarFundamental.localeData[locale].MonthNames[month];            							
+            case 'mm':   return EGCalendarFundamental.leftPadding("" + (month + 1), '0', 2);
+            case 'm':   return "" + (month + 1);
+            case 'dddd': return gsDayNames[day];
+            case 'ddd':  return gsDayNames[day].substr(0, 3);
+            case 'dd':   return date.zf(2);
+            case 'HH':   return EGCalendarFundamental.leftPadding("" + hours, '0', 2);
+            case 'hh':   return EGCalendarFundamental.leftPadding("" + ((h = hours % 12) ? h : 12), '0', 2);
+            case 'nn':   return EGCalendarFundamental.leftPadding("" + minutes, '0', 2);
+            case 'ss':   return seconds.zf(2);
+            case 'a/p':  return hours < 12 ? 'a' : 'p';
             }
         }
         
@@ -132,9 +213,12 @@ EGCalendarFundamental.getDateString = function(d)
 EGCalendarFundamental.cal_Date = function(a, tz)
 { var aa=a;
 	
-	if (tz == null) tz = "+00:00"; else tz = tz.substr(3);
+	if (tz == null)
+	{ tz = "+00:00";}
+		else tz = tz.substr(3);
 	
   if (aa.length==10)     aa += 'T00:00:00.000'  + tz;     
+  //if (aa.length==10)     aa += 'T23:59:590.000'  + tz;     
   
   return Date.parse(aa.replace(/^(\d{4})-(\d{2})-(\d{2})T([0-9:]*)([.0-9]*)(Z|([+-])(\d{2})(:*)(\d{2}))$/, 
 					'$1/$2/$3 $4 GMT$7$8$10'));
@@ -143,7 +227,22 @@ EGCalendarFundamental.cal_Date = function(a, tz)
 
 EGCalendarFundamental.cal_comp = function(a,b)
 {
-	order = EGCalendarFundamental.cal_Date(a.gd$when[0].startTime) - EGCalendarFundamental.cal_Date(b.gd$when[0].startTime);
+	order = EGCalendarFundamental.cal_Date(a.gd$when[0].startTime, a.gd$GMTOffset) - EGCalendarFundamental.cal_Date(b.gd$when[0].startTime, b.gd$GMTOffset);
+  return order;
+}
+
+EGCalendarFundamental.cal_weighting = function(a,b)
+{
+	var a_startDate = EGCalendarFundamental.cal_Date(a.gd$when[0].startTime, a.gd$GMTOffset);
+	var a_endDate = EGCalendarFundamental.cal_Date(a.gd$when[0].endTime, a.gd$GMTOffset);
+	var b_startDate = EGCalendarFundamental.cal_Date(b.gd$when[0].startTime, b.gd$GMTOffset);
+	var b_endDate = EGCalendarFundamental.cal_Date(b.gd$when[0].endTime, b.gd$GMTOffset);
+
+	if (a_endDate - a_startDate< EGCalendarFundamental.oneday && b_endDate - b_startDate < EGCalendarFundamental.oneday )
+		order = a_startDate - b_startDate;
+	else
+		order = b_endDate - a_endDate;
+	
   return order;
 }
 
@@ -164,14 +263,20 @@ EGCalendarFundamental.compEvent = function(a,b)
   return order;
 }
 
+EGCalendarFundamental.msg = "";
+
 EGCalendarFundamental.sortDayEvent = function(dayEvents)
 {
+
 	var availables = new Array(dayEvents.length);
 	
-	dayEvents = dayEvents.sort(EGCalendarFundamental.cal_comp);
+	//dayEvents = dayEvents.sort(EGCalendarFundamental.cal_comp);
+  dayEvents = dayEvents.sort(EGCalendarFundamental.cal_weighting);
+	
 	
 	for (var i=0; i<dayEvents.length; i++)
 	{
+		//if (dayEvents[i].title.$t.indexOf("戒賭輔導員基礎課程")>= 0) alert (dayEvents[i].title.$t + "/" + dayEvents[i].rank);					
 		if (dayEvents[i].rank != null)
 		{
 			availables[dayEvents[i].rank] = 0;
@@ -189,25 +294,45 @@ EGCalendarFundamental.sortDayEvent = function(dayEvents)
 			{
 				j++;
 			}
+			
+			//if (dayEvents[i].gd$when[0].startTime.indexOf("2007-06-19")>= 0) alert (dayEvents[i].title.$t + "/" + dayEvents[i].rank + "/j=" + j + "/" + availables[j]);			
 			dayEvents[i].rank = j; j++;
 		}
+		
+//		EGCalendarFundamental.msg += dayEvents[i].title.$t + "(" + dayEvents[i].rank + ")";
 	}	
 	
+//	EGCalendarFundamental.msg += "<BR>";
 	return dayEvents.sort(EGCalendarFundamental.compEvent);
 }
   
-EGCalendarFundamental.pushEvent = function(ev, eventsArray, arrayBegin, arrayEnd)
+EGCalendarFundamental.prototype.pushEvent = function(ev, eventsArray, arrayBegin, arrayEnd)
 {
 	  var startTime=ev.gd$when[0].startTime;
 	  var endTime=ev.gd$when[0].endTime;
-		var startDate = new Date(startTime.substring(0,4), startTime.substring(5,7) - 1, startTime.substring(8,10));  
-		var endDate = new Date(endTime.substring(0,4), endTime.substring(5,7) - 1, endTime.substring(8,10)); 
+
+		//var startDate = new Date(startTime.substring(0,4), startTime.substring(5,7) - 1, startTime.substring(8,10));  
+		//var endDate = new Date(endTime.substring(0,4), endTime.substring(5,7) - 1, endTime.substring(8,10)); 
+	
+		var startDate = new Date(EGCalendarFundamental.cal_Date(ev.gd$when[0].startTime, ev.gd$GMTOffset ));
+		var endDate = new Date(EGCalendarFundamental.cal_Date(ev.gd$when[0].endTime, ev.gd$GMTOffset));
+		ev.debug$startDate = startDate;
+		startDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+	//	endDate = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+		ev.debug$endDate = endDate;
+		
+		if (ev.gd$GMTOffset != "GMT+08:00")
+		{
+			//alert(startDate + "," + startTime);
+			//alert(endDate + "," + endTime);
+	  }
+		
 	
 		if (startDate.getTime() < arrayBegin.getTime()) startDate = arrayBegin;
 //		if (endDate.getTime() > arrayEnd.getTime()) endDate = arrayEnd + EGCalendarFundamental.oneday;
 	
-		var i = (startDate - arrayBegin) / EGCalendarFundamental.oneday;
-		var d = (endDate - startDate) / EGCalendarFundamental.oneday;
+		var i = Math.round((startDate - arrayBegin) / EGCalendarFundamental.oneday);
+		var d = Math.round((endDate - startDate) / EGCalendarFundamental.oneday);
 		
 		if (d==0) d=1;
 
@@ -222,7 +347,7 @@ EGCalendarFundamental.pushEvent = function(ev, eventsArray, arrayBegin, arrayEnd
 		}
 }
     
-EGCalendarFundamental.parseEvents = function(events, arrayBegin, arrayEnd)
+EGCalendarFundamental.prototype.parseEvents = function(events, arrayBegin, arrayEnd)
 {
 	var interval = (arrayEnd - arrayBegin)/EGCalendarFundamental.oneday + 1;
 
@@ -231,135 +356,12 @@ EGCalendarFundamental.parseEvents = function(events, arrayBegin, arrayEnd)
 	if (events)	
 	for (var i=0; i<events.length; i++)
 	{
-		EGCalendarFundamental.pushEvent(events[i], eventsArray, arrayBegin, arrayEnd);
+		this.pushEvent(events[i], eventsArray, arrayBegin, arrayEnd);
 	} 					
 	
 	return eventsArray;			
 }        
  
- 
-EGCalendarFundamental.prototype.getWeekRow2 = function(eventsArray, i, w, today, rb, re, colcount)
-{
-	var ret = "";
-
-	for (r=rb; r<re+1; r++)
-	{
-		ret += '<tr class="grid-row">';
-		if (eventsArray != null && colcount != 0)
-		{
-			var n = 0;
-			var firstdayofweek = w.getTime() - EGCalendarFundamental.oneday*7;
-			var lastdayofweek = w.getTime() - EGCalendarFundamental.oneday;
-			for (n=6; n>=0; n--)
-			{
-
-				if ( (w.getTime() - EGCalendarFundamental.oneday*(n+1)) == today.getTime())
-					cellClass = "cell-today ";
-				else
-					cellClass = ""
-
-					//if ( (eventsArray[i-n] != null && eventsArray[i-n].length < r+1) || (eventsArray[i-n] ==null && n==6)  )
-					if ( (eventsArray[i-n] != null && eventsArray[i-n].length < r+1) || (eventsArray[i-n] ==null && n==6)  )
-					//if ( (eventsArray[i-n] != null && eventsArray[i-n][eventsArray[i-n].length-1].rank < r) || (eventsArray[i-n] ==null && n==6)  )
-					{
-						if (r == re)
-						cellClass += "cell-empty cell-last-row";
-
-						ret += '<td class="' + cellClass + '" >a ' +  r + ' </td>';
-					}
-					else if (eventsArray[i-n] != null && eventsArray[i-n].length >= r+1)
-						{
-							if (eventsArray[i-n][r].startDate.getTime() == (w.getTime() - EGCalendarFundamental.oneday*(n+1)) ||
-							((w.getTime() - EGCalendarFundamental.oneday*(n+1)) == firstdayofweek && eventsArray[i-n][r].startDate.getTime() < firstdayofweek)
-							)
-							{
-								ev = eventsArray[i-n][r];
-								ev_startTime=ev.gd$when[0].startTime;
-								ev_endTime=ev.gd$when[0].endTime;
-								ev_startDate = new Date(ev_startTime.substring(0,4), ev_startTime.substring(5,7) - 1, ev_startTime.substring(8,10));
-								ev_endDate = new Date(ev_endTime.substring(0,4), ev_endTime.substring(5,7) - 1, ev_endTime.substring(8,10));
-								title=ev.title.$t;
-								
-								if (this.debug) title += "(" + ev.rank + ")";
-								// + "<BR>" + ev.gd$when[0].startTime + "<BR>" + new Date(EGCalendarFundamental.cal_Date(ev.gd$when[0].startTime, this.gcal_timezone));
-
-								link=ev.link[0].href;
-
-								eventClass = "";
-								var divStyle = "";
-								var linkStyle = "";
-
-								ev.rank = r;
-								
-								var st = ev_startDate;
-								var ed = ev_endDate;
-
-								if (ev_startDate.getTime() < firstdayofweek)
-								{	st = firstdayofweek;
-									eventClass += "item-continued ";
-								}
-								if (ev_endDate.getTime() > lastdayofweek + EGCalendarFundamental.oneday)
-								{
-									ed = lastdayofweek + EGCalendarFundamental.oneday;
-									eventClass += "item-continues ";
-								}
-								var ev_interval1 = (ed - st)/EGCalendarFundamental.oneday;
-
-								if (ev_startDate.getTime() == ev_endDate.getTime())
-								{
-									eventClass = +"event-singleday "; //item-content
-									eventSpan = "";
-
-									var st = new Date(EGCalendarFundamental.cal_Date(ev.gd$when[0].startTime, this.gcal_timezone));
-									title = st.toLocaleTimeString() + " " + title;
-
-									if (ev.gd$Color != null)
-									linkStyle = "style='color:" + ev.gd$Color + "' "
-								}
-								else
-									{
-										eventClass += "event-multiday ";	// item-content
-
-										if (ev_interval1 == 0) ev_interval1++;
-										//title += "," + ev_interval1;
-										eventSpan = 'colspan="' + ev_interval1  +'"';
-
-										if (ev.gd$Color != null)
-										divStyle = "style='background-color:" + ev.gd$Color + "' ";
-									}
-
-									if (r == re)
-									cellClass += 'cell-last-row ';
-
-									//  				  ret += '<td class="' + cellClass + '" ' + eventSpan + '><div class="' + eventClass + '"><div class="t2 tbg"></div><div class="t0 tbg"><a class="event-link" href="' + link + '" target="_blank"><span class="event-summary">' + title + '</span></a></div><div class="t2 tbg"></div></div>'
-									ret += '<td class="' + cellClass + '" ' + eventSpan + '><div class="' + eventClass + '"><div class="t2 tbg" ' + divStyle + '></div><div class="t0 tbg" ' + divStyle + '><a class="event-link" ' + linkStyle + 'href="' + link + '" target="_blank"><span class="event-summary">' + title + '</span></a></div><div class="t2 tbg" ' + divStyle + '></div></div>'
-									+ '</td>';
-								}
-								} else if (eventsArray[i-n] != null) {
-									if (r == re)
-									cellClass += "cell-empty cell-last-row";
-
-									ret += '<td class="' + cellClass + '" >' + r + '</td>';
-								}
-							}
-							} else if (colcount == 0)
-								{
-									if ( (w.getTime() - EGCalendarFundamental.oneday*7) == today.getTime())
-									cellClass = "cell-today ";
-									else
-										cellClass = "";
-
-										if (r == re)
-										cellClass += "cell-empty cell-last-row"
-
-										ret += '<td class="' + cellClass + '" >b</td>';
-									}
-
-									ret += '</tr>';
-								}
-								return ret;
-							}
-
 EGCalendarFundamental.prototype.isRankExisted = function(dayEvents, r)
 {
 	var ret = false;
@@ -397,7 +399,8 @@ EGCalendarFundamental.prototype.getWeekRow = function(eventsArray, i, w, today, 
 
 				if (eventsArray[i-n] != null)
 				{
-					//EGCalendarFundamental.sortDayEvent(eventsArray[i-n]);
+//					if (n == 6)
+//						EGCalendarFundamental.sortDayEvent(eventsArray[i-n]);
 									
 					if (eventsArray[i-n].length >= r+1)
 					{
@@ -408,43 +411,53 @@ EGCalendarFundamental.prototype.getWeekRow = function(eventsArray, i, w, today, 
 								ev = eventsArray[i-n][r];
 								ev_startTime=ev.gd$when[0].startTime;
 								ev_endTime=ev.gd$when[0].endTime;
-								ev_startDate = new Date(ev_startTime.substring(0,4), ev_startTime.substring(5,7) - 1, ev_startTime.substring(8,10));
-								ev_endDate = new Date(ev_endTime.substring(0,4), ev_endTime.substring(5,7) - 1, ev_endTime.substring(8,10));
+								//ev_startDate = new Date(ev_startTime.substring(0,4), ev_startTime.substring(5,7) - 1, ev_startTime.substring(8,10));
+								//ev_endDate = new Date(ev_endTime.substring(0,4), ev_endTime.substring(5,7) - 1, ev_endTime.substring(8,10));
+								ev_startDate = new Date(EGCalendarFundamental.cal_Date(ev.gd$when[0].startTime, this.gcal_timezone.getGMTOffset()));
+								ev_startDate = new Date(ev_startDate.getFullYear(), ev_startDate.getMonth(), ev_startDate.getDate());
+								ev_endDate = new Date(EGCalendarFundamental.cal_Date(ev.gd$when[0].endTime, this.gcal_timezone.getGMTOffset()));
+								//ev_endDate = new Date(ev_endDate.getFullYear(), ev_endDate.getMonth(), ev_endDate.getDate());	
 								title=ev.title.$t;
 								
-								// + "<BR>" + ev.gd$when[0].startTime + "<BR>" + new Date(EGCalendarFundamental.cal_Date(ev.gd$when[0].startTime, this.gcal_timezone));
+								// + "<BR>" + ev.gd$when[0].startTime + "<BR>" + new Date(EGCalendarFundamental.cal_Date(ev.gd$when[0].startTime, this.gcal_timezone.getGMTOffset()));
 
 								link=ev.link[0].href;
-
-								eventClass = "";
+														
+								eventClass = this.gcal_wrap ? "" : "item-content "; 
+								
 								var divStyle = "";
 								var linkStyle = "";
 
-								ev.rank = r;
+								//ev.rank = r;
 																
-								if (this.debug) title += "(" + ev.rank + ")";
+								if (this.gcal_debug) title += "(" + ev.rank + ")";
 																
 								var st = ev_startDate;
 								var ed = ev_endDate;
 
 								if (ev_startDate.getTime() < firstdayofweek)
-								{	st = firstdayofweek;
+								{	st = new Date(firstdayofweek);
 									eventClass += "item-continued ";
 								}
 								if (ev_endDate.getTime() > lastdayofweek + EGCalendarFundamental.oneday)
 								{
-									ed = lastdayofweek + EGCalendarFundamental.oneday;
+									ed = new Date(lastdayofweek + EGCalendarFundamental.oneday);
 									eventClass += "item-continues ";
 								}
 								var ev_interval1 = (ed - st)/EGCalendarFundamental.oneday;
+								
+								//if (ev_interval1 == 1 && st.getDate() == 11) alert (ed +"/" +st);
 
-								if (ev_startDate.getTime() == ev_endDate.getTime())
+								//if (st.getDate() == ed.getDate())
+								if (ev_interval1 < 1)
 								{
-									eventClass = +"event-singleday "; //item-content
+									eventClass += "event-singleday "; //item-content
 									eventSpan = "";
 
-									var st = new Date(EGCalendarFundamental.cal_Date(ev.gd$when[0].startTime, this.gcal_timezone));
-									title = st.toLocaleTimeString() + " " + title;
+									//var st = new Date(EGCalendarFundamental.cal_Date(ev.gd$when[0].startTime, this.gcal_timezone.getGMTOffset()));
+									var st = new Date(EGCalendarFundamental.cal_Date(ev.gd$when[0].startTime, ev.gd$GMTOffset));
+									title = 
+									this.dateFormat("HH:nn", new Date(st.getTime() + st.getTimezoneOffset()*60000 + this.gcal_timezone.getOffset()), false) + " " + title;
 
 									if (ev.gd$Color != null)
 									linkStyle = "style='color:" + ev.gd$Color + "' "
@@ -453,6 +466,7 @@ EGCalendarFundamental.prototype.getWeekRow = function(eventsArray, i, w, today, 
 								{
 										eventClass += "event-multiday ";	// item-content
 
+										ev_interval1 = Math.round(ev_interval1);
 										if (ev_interval1 == 0) ev_interval1++;
 										//title += "," + ev_interval1;
 										eventSpan = 'colspan="' + ev_interval1  +'"';
@@ -482,8 +496,8 @@ EGCalendarFundamental.prototype.getWeekRow = function(eventsArray, i, w, today, 
 								for (var q=0; q< eventsArray[i-n].length; q++)
 								apx = apx +  eventsArray[i-n][q].title.$t + "(" + eventsArray[i-n][q].rank +")" + "/";
 
-								if (this.debug)
-									ret += '<td class="' + cellClass + '" >e ' + "," + n + "," +  r + "," +  apx + ' </td>';						
+								if (this.gcal_debug)
+									ret += '<td class="' + cellClass + '" >e ' + "," + n + "," +  r + "," +  ' </td>';						
 								else
 									ret += '<td class="' + cellClass + '" ></td>';
 						  }
@@ -492,7 +506,7 @@ EGCalendarFundamental.prototype.getWeekRow = function(eventsArray, i, w, today, 
 						if (r == re)
 						cellClass += "cell-empty cell-last-row";
 
-						if (this.debug)
+						if (this.gcal_debug)
 							ret += '<td class="' + cellClass + '" >b ' +  "," + n + "," + r + "," + eventsArray[i-n][eventsArray[i-n].length-1].rank + ' </td>';
 						else
 							ret += '<td class="' + cellClass + '" ></td>';
@@ -503,7 +517,7 @@ EGCalendarFundamental.prototype.getWeekRow = function(eventsArray, i, w, today, 
 					if (r == re)
 						cellClass += "cell-empty cell-last-row";
 
-					if (this.debug)
+					if (this.gcal_debug)
 						ret += '<td class="' + cellClass + '" >a ' +  r + ' </td>';					
 					else
 						ret += '<td class="' + cellClass + '" ></td>';
@@ -536,7 +550,7 @@ EGCalendarFundamental.prototype.addFeed = function(feedkey, color, targetDate)
 	var startmin = new Date(targetDate.getTime() - targetDate.getDay()*EGCalendarFundamental.oneday);
 	var startmax = new Date(new Date(targetDate.getFullYear(), targetDate.getMonth()+1, 1).getTime() - EGCalendarFundamental.oneday);
 	startmax = new Date(startmax.getTime() + (6 - startmax.getDay()+1)*EGCalendarFundamental.oneday); 	
-	var parameters = "?alt=json-in-script&orderby=starttime&sortorder=ascend&max-results=100&singleevents=true" + "&start-min=" + EGCalendarFundamental.getDateString(startmin) + "&start-max=" + EGCalendarFundamental.getDateString(startmax);
+	var parameters = "?alt=json-in-script&orderby=starttime&sortorder=ascend&max-results=300&singleevents=true" + "&start-min=" + EGCalendarFundamental.getDateString(startmin) + "&start-max=" + EGCalendarFundamental.getDateString(startmax);
 	
 	//gcal_callbacks.push(new Callback(color));	
 	//parameters += "&callback=gcal_callbacks[" + (gcal_callbacks.length-1) + "]";
@@ -578,22 +592,30 @@ EGCalendarFundamental.prototype.concatEvents = function(json)
 	var feedurl = json.feed.link[0].href;
 	var feedkey = feedurl.substr(feedurl.indexOf("feeds/")+6);
 	feedkey = feedkey.substr(0, feedkey.indexOf("/"));
-	
-	if (this.gcal_title == null)
+	var timezone = new EGCalTimezone(json.feed.gCal$timezone.value);
+	if (!this.gcal_title)
 	{
 		this.gcal_title = json.feed.title.$t;
 	}
 
-	if (this.gcal_timezone == null)
+	if (!this.gcal_timezone)
 	{
-		this.gcal_timezone = json.feed.gCal$timezone.value;
+		try
+		{
+			this.gcal_timezone = timezone;
+		} catch (e)
+		{
+			this.gcal_timezone = new EGCalTimezone("Europe/London");
+		}
 	}
 	
 	if (json.feed.entry != null)
 	{
 		for (var i=0; i<json.feed.entry.length; i++)
-			json.feed.entry[i].gd$Color = this.gcal_colortable[feedkey] 
-		
+		{
+			json.feed.entry[i].gd$Color = this.gcal_colortable[feedkey];
+			json.feed.entry[i].gd$GMTOffset = timezone.getGMTOffset();
+		}
 		this.gcal_events = this.gcal_events.concat(json.feed.entry);
 		this.gcal_events.sort(EGCalendarFundamental.cal_comp);
 	}		
@@ -613,13 +635,13 @@ EGCalendarFundamental.prototype.getMonthTable = function(target, year, month, ev
 	var m = month;
 	// class="month-table"
 	var ret = '<table class="month-table"><col width="14%" class="column-label"><col width="14%" class="column-label"><col width="14%" class="column-label"><col width="14%" class="column-label"><col width="14%" class="column-label"><col width="14%" class="column-label"><col width="14%" class="column-label">'
-					+	'<tr><th class="column-label">' + EGCalendarFundamental.localeData[this.locale].Sunday + '</th>'
-					+ '<th class="column-label">' + EGCalendarFundamental.localeData[this.locale].Monday + '</th>'
-					+ '<th class="column-label">' + EGCalendarFundamental.localeData[this.locale].Tuesday + '</th>'
-					+ '<th class="column-label">' + EGCalendarFundamental.localeData[this.locale].Wednesday + '</th>'
-					+ '<th class="column-label">' + EGCalendarFundamental.localeData[this.locale].Thursday + '</th>'
-					+ '<th class="column-label">' + EGCalendarFundamental.localeData[this.locale].Friday + '</th>'
-					+ '<th class="column-label">' + EGCalendarFundamental.localeData[this.locale].Saturday + '</th></tr>';
+					+	'<tr><th class="column-label">' + EGCalendarFundamental.localeData[this.gcal_locale].Sunday + '</th>'
+					+ '<th class="column-label">' + EGCalendarFundamental.localeData[this.gcal_locale].Monday + '</th>'
+					+ '<th class="column-label">' + EGCalendarFundamental.localeData[this.gcal_locale].Tuesday + '</th>'
+					+ '<th class="column-label">' + EGCalendarFundamental.localeData[this.gcal_locale].Wednesday + '</th>'
+					+ '<th class="column-label">' + EGCalendarFundamental.localeData[this.gcal_locale].Thursday + '</th>'
+					+ '<th class="column-label">' + EGCalendarFundamental.localeData[this.gcal_locale].Friday + '</th>'
+					+ '<th class="column-label">' + EGCalendarFundamental.localeData[this.gcal_locale].Saturday + '</th></tr>';
 	var i = 0;
 	var j = 0;
 	var k = 0;
@@ -641,7 +663,7 @@ EGCalendarFundamental.prototype.getMonthTable = function(target, year, month, ev
 	
 	//var events = json.feed.entry;
 	
-	var testary = EGCalendarFundamental.parseEvents(events, begin, end);
+	var testary = this.parseEvents(events, begin, end);
 	
 	if (false)
 	{
@@ -657,7 +679,7 @@ EGCalendarFundamental.prototype.getMonthTable = function(target, year, month, ev
 			appendix +="=";
 			for (var j=0; j<x.length; j++)
 			{
-				 appendix += x[j].title.$t + " , ";
+				 appendix += x[j].title.$t + "(" + x[j].debug$endDate  +"/" + x[j].debug$startDate + ")" + " , ";
 			}
 		}
 		appendix +="<br>";
@@ -713,7 +735,11 @@ EGCalendarFundamental.prototype.getMonthTable = function(target, year, month, ev
 				
 				
 				if (eventsArray != null && eventsArray[(w.getTime() - begin.getTime())/EGCalendarFundamental.oneday] != null)
-				{
+				{				
+					if (j==0)
+					for (var x=0; x<eventsArray[(w.getTime() - begin.getTime())/EGCalendarFundamental.oneday].length; x++)
+					 eventsArray[(w.getTime() - begin.getTime())/EGCalendarFundamental.oneday][x].rank = null;
+					
 					eventsArray[(w.getTime() - begin.getTime())/EGCalendarFundamental.oneday] = EGCalendarFundamental.sortDayEvent(eventsArray[(w.getTime() - begin.getTime())/EGCalendarFundamental.oneday]);
 					
 					
@@ -724,15 +750,18 @@ EGCalendarFundamental.prototype.getMonthTable = function(target, year, month, ev
 				  ev = eventsArray[(w.getTime() - begin.getTime())/EGCalendarFundamental.oneday][0];
 					ev_startTime=ev.gd$when[0].startTime;
 					ev_endTime=ev.gd$when[0].endTime;
-					ev_startDate = new Date(ev_startTime.substring(0,4), ev_startTime.substring(5,7) - 1, ev_startTime.substring(8,10));  				  
-					ev_endDate = new Date(ev_endTime.substring(0,4), ev_endTime.substring(5,7) - 1, ev_endTime.substring(8,10));  
+					ev_startDate = new Date(EGCalendarFundamental.cal_Date(ev.gd$when[0].startTime, this.gcal_timezone.getGMTOffset()));
+					ev_startDate = new Date(ev_startDate.getFullYear(), ev_startDate.getMonth(), ev_startDate.getDate());							
+					ev_endDate = new Date(EGCalendarFundamental.cal_Date(ev.gd$when[0].endTime, this.gcal_timezone.getGMTOffset()));
+					//ev_endDate = new Date(ev_endDate.getFullYear(), ev_endDate.getMonth(), ev_endDate.getDate());	
 					title=ev.title.$t;
 
-					//+ "<BR>" + ev.gd$when[0].startTime + "<BR>" + new Date(EGCalendarFundamental.cal_Date(ev.gd$when[0].startTime, this.gcal_timezone));
+					//+ "<BR>" + ev.gd$when[0].startTime + "<BR>" + new Date(EGCalendarFundamental.cal_Date(ev.gd$when[0].startTime, this.gcal_timezone.getGMTOffset()));
 					
         	link=ev.link[0].href;
         	
-        	eventClass = "";eventClass
+        	eventClass = this.gcal_wrap ? "" : "item-content "; 
+        	
 					var divStyle = "";
 					var linkStyle = "";
 					        	
@@ -742,33 +771,35 @@ EGCalendarFundamental.prototype.getMonthTable = function(target, year, month, ev
 						
 						if (ev_startDate.getTime() < firstdayofweek)
 						{
-							st = firstdayofweek;					
+							st = new Date(firstdayofweek);					
 							eventClass += "item-continued ";							
 						}
 
 						if (ev_endDate.getTime() > lastdayofweek + EGCalendarFundamental.oneday) 
 						{
-							ed = lastdayofweek + EGCalendarFundamental.oneday;
+							ed = new Date(lastdayofweek + EGCalendarFundamental.oneday);
 							eventClass += "item-continues ";
 						}						
 
 						var ev_interval2 = (ed - st)/EGCalendarFundamental.oneday;
-						        					        	
+						
+						//if (ev_interval2 == 0 && st.getDate() == 11) alert (ed +"/" +st);	        	
 				//title += " " + eventClass;
 						        					        	
-					ev.rank = 0;
-
-					
-					if (this.debug) title += "(" + ev.rank + ")";
+					ev.rank = 0;					
+				
+					if (this.gcal_debug) title += "(" + ev.rank + ")";
 					
 											        	
-        	if (ev_startDate.getTime() == ev_endDate.getTime())
+        	if (ev_interval2<1)
         	{
 						eventClass += "event-singleday "; // item-content 
 						eventSpan = "";
 						
-						var st = new Date(EGCalendarFundamental.cal_Date(ev.gd$when[0].startTime, this.gcal_timezone));
-						title = st.toLocaleTimeString() + " " + title;
+						//var st = new Date(EGCalendarFundamental.cal_Date(ev.gd$when[0].startTime, this.gcal_timezone.getGMTOffset()));
+						var st = new Date(EGCalendarFundamental.cal_Date(ev.gd$when[0].startTime, ev.gd$GMTOffset));
+						//title = (new Date(st.getTime() - st.getTimezoneOffset()*60000 + this.gcal_timezone.getOffset())).toLocaleTimeString() + " " + title;
+						title = this.dateFormat("HH:nn", new Date(st.getTime() + st.getTimezoneOffset()*60000 + this.gcal_timezone.getOffset()), false) + " " + title;
 						
 						if (ev.gd$Color != null) 
 							linkStyle = "style='color:" + ev.gd$Color + "' "						
@@ -777,6 +808,7 @@ EGCalendarFundamental.prototype.getMonthTable = function(target, year, month, ev
 					{
 						eventClass += "event-multiday ";  // item-content 
 						
+						ev_interval2 = Math.round(ev_interval2);
 						if (ev_interval2 == 0) ev_interval2++;
 						
 						//title += "," + ev_interval2;
@@ -794,7 +826,7 @@ EGCalendarFundamental.prototype.getMonthTable = function(target, year, month, ev
 					} else if (eventsArray[(w.getTime() - begin.getTime())/EGCalendarFundamental.oneday][0].rank != 0) {
 						cellClass += "cell-empty cell-empty-below";
 						
-						if (this.debug)
+						if (this.gcal_debug)
 							ret += '<td class="' + cellClass + '" >n</td>';
 						else
 							ret += '<td class="' + cellClass + '" ></td>';						
@@ -818,7 +850,7 @@ EGCalendarFundamental.prototype.getMonthTable = function(target, year, month, ev
 					{
 						cellClass += "cell-empty cell-empty-below";
 						
-						if (this.debug)
+						if (this.gcal_debug)
 							ret += '<td class="' + cellClass + '" >k</td>';
 						else
 							ret += '<td class="' + cellClass + '" ></td>';
@@ -827,7 +859,7 @@ EGCalendarFundamental.prototype.getMonthTable = function(target, year, month, ev
 					{
 						cellClass += "cell-empty cell-last-row";
 						
-						if (this.debug)
+						if (this.gcal_debug)
 							ret += '<td class="' + cellClass + '" rowspan="' + max_events_in_this_week + '" >m</td>';
 						else
 						  ret += '<td class="' + cellClass + '" rowspan="' + max_events_in_this_week + '" ></td>';
@@ -880,7 +912,7 @@ EGCalendarFundamental.prototype.getMonthTable = function(target, year, month, ev
 	
 
 	if (document.getElementById("title-tab"))
-		document.getElementById("title-tab").innerHTML = "<b>" +  this.dateFormat(EGCalendarFundamental.localeData[this.locale].MonthFormatString, target) + "</b>";
+		document.getElementById("title-tab").innerHTML = "<b>" +  this.dateFormat(EGCalendarFundamental.localeData[this.gcal_locale].MonthFormatString, target) + "</b>";
 	
 	return ret;				
 }
@@ -891,10 +923,10 @@ EGCalendarFundamental.prototype.gcalendar = function(targetFrame, events) {
 	var doozer_css = 'http://nsquare.net/gcal.css'; // apache redirect to current css 	
 	var embed_css = 'http://nsquare.net/gcalembed.css'; // apache redirect to current css 
 	
-	if (this.css_id != null)
+	if (this.gcal_css_id != null)
 	{
-		'http://www.google.com/calendar/' + this.css_id + 'doozercompiled.css';
-		'http://www.google.com/calendar/embed/' + this.css_id + 'embedcompiled.css';
+		'http://www.google.com/calendar/' + this.gcal_css_id + 'doozercompiled.css';
+		'http://www.google.com/calendar/embed/' + this.gcal_css_id + 'embedcompiled.css';
 	}
 	
 	var header = '<head><title></title>\n'
@@ -904,6 +936,8 @@ EGCalendarFundamental.prototype.gcalendar = function(targetFrame, events) {
 			+ '<style>body{padding:0;margin:.1em .1em .1em;font-size:10pt} #nav td{padding-top:.1em; padding-bottom:4px; margin:0; border:none}#footer #poweredby-link{position:relative;top:-45px;left:-12px;float:right;clear:right}'
 			+ '#footer #poweredby-link img{filter:progid:DXImageTransform.Microsoft.AlphaImageLoader(src="http://www.google.com/calendar/images/ext/poweredby.png",sizingMethod="scale")}'
 			+ '#footer #poweredby-link>img{filter:none;background:url(http://www.google.com/calendar/images/ext/poweredby.png) no-repeat center}'
+			+ '.month-table .item-continued .t0{background-image:url(http://www.google.com/calendar/images/icon_moreleft.gif);}'
+			+ '.month-table .item-continues .t0{background-image:url(http://www.google.com/calendar/images/icon_moreright.gif);}'
 			+ '</style>'
 			+ '</head>\n';
 	var body = '<body style="background-color: transparent" class="view-month chrome-navigation">';
@@ -934,17 +968,17 @@ EGCalendarFundamental.prototype.gcalendar = function(targetFrame, events) {
 					+ ' if (iframe_fundamental.gcal_count== ' + this.gcal_feedkeys.length +') document.getElementById("view-container").innerHTML = iframe_fundamental.getMonthTable(target, year, month, myjson); \n'
 					+ '}\n'
 					+ 'function gotoToday() { target = new Date(); year = target.getFullYear(); month = target.getMonth(); target = new Date(target.getFullYear(), target.getMonth(), target.getDate()); \n'
-					+ ' if (!iframe_fundamental) iframe_fundamental = new EGCalendarFundamental("iframe_fundamental",'+ this.locale + ');\n'					
+					+ ' if (!iframe_fundamental) iframe_fundamental = new EGCalendarFundamental("iframe_fundamental",'+ this.gcal_locale + ');\n'					
 					+ ' iframe_fundamental.gcal_onload = refreshTable; \n'
 					+ ' refreshFeeds(target); \n'
           +	'}\n'
 					+ 'function backward() { month--; target = new Date(year, month, 1); '
-					+ ' if (!iframe_fundamental) iframe_fundamental = new EGCalendarFundamental("iframe_fundamental",'+ this.locale + ');\n'					
+					+ ' if (!iframe_fundamental) iframe_fundamental = new EGCalendarFundamental("iframe_fundamental",'+ this.gcal_locale + ');\n'					
 					+ ' iframe_fundamental.gcal_onload = refreshTable; \n'
 					+ ' refreshFeeds(target); \n'
 					+	'}\n'
 					+ 'function foreward() { month++; target = new Date(year, month, 1); '
-					+ ' if (!iframe_fundamental) iframe_fundamental = new EGCalendarFundamental("iframe_fundamental",'+ this.locale + ');\n'					
+					+ ' if (!iframe_fundamental) iframe_fundamental = new EGCalendarFundamental("iframe_fundamental",'+ this.gcal_locale + ');\n'					
 					+ ' iframe_fundamental.gcal_onload = refreshTable; \n'					
 					+ ' refreshFeeds(target); \n'
 					+	'}\n'          
@@ -952,37 +986,40 @@ EGCalendarFundamental.prototype.gcalendar = function(targetFrame, events) {
 	
 	var nav = //'<H2>' + today + '</H2>' +
 					'<table id="nav"><tr><td class="nav-buttons"><a href="#" onclick="backward(); return false;"><img width="29" alt="" src="http://www.google.com/calendar/images/btn_prev.gif" class="nav-button" height="17"></a><a href="#" onclick="foreward(); return false;"><img width="29" alt="" src="http://www.google.com/calendar/images/btn_next.gif" class="nav-button" height="17"></a>'
-					+ '<button id="nav-today" onclick="gotoToday()">' + EGCalendarFundamental.localeData[this.locale].Today + '</button>'
+					+ '<button id="nav-today" onclick="gotoToday()">' + EGCalendarFundamental.localeData[this.gcal_locale].Today + '</button>'
 					+ '</td>'
 					+ '<td id="title-tab" class="nav-tab"></td>'
-					+ '<td id="month-tab" class="nav-tab"><div class="t1 tbg"></div><div class="t2 tbg"></div><a href="#" class="tab-link tbg">' + EGCalendarFundamental.localeData[this.locale].Month + '</a></td>'
+					+ '<td id="month-tab" class="nav-tab"><div class="t1 tbg"></div><div class="t2 tbg"></div><a href="#" class="tab-link tbg">' + EGCalendarFundamental.localeData[this.gcal_locale].Month + '</a></td>'
 					//+ '<td id="agenda-tab" class="nav-tab"><div class="t1 tbg"></div><div class="t2 tbg"></div><a href="#" class="tab-link t0 tbg"> 待辦事項 </a></td>'
 					+ '</tr></table>'
 					+ '<div class="view-cap t1"></div><div class="view-cap t2"></div>'
 					+ '<div class="view-container-border"><div id="view-container" class="view-container">'
-					+ '\n<script> document.getElementById("title-tab").innerHTML = "<b>' + this.dateFormat(EGCalendarFundamental.localeData[this.locale].MonthFormatString, today) +'</b>";\n</script>';
+					+ '\n<script> document.getElementById("title-tab").innerHTML = "<b>' + this.dateFormat(EGCalendarFundamental.localeData[this.gcal_locale].MonthFormatString, today) +'</b>";\n</script>';
 				  //+ '\n<script> document.getElementById("title-tab").innerHTML = "<b>2007年" + (month+1) + "月</b>";\n</script>';
 
 	var suffix = '</div></div><div class="view-cap t2"></div><div class="view-cap t1"></div><div id="footer">'
-					+ '<span id="timezone">' + EGCalendarFundamental.localeData[this.locale].Timezone + this.gcal_timezone + '</span>'
+					+ '<span id="timezone">' + EGCalendarFundamental.localeData[this.gcal_locale].Timezone + this.gcal_timezone.getTimezone() + '</span>'
 					//+ '<div id="subscribe-link">由 Google 日曆提供:<a href="http://www.google.com/calendar/render?cid=' + "" + '" target="_blank">使用</a></div><a href="http://www.google.com/calendar/render" target="_blank" id="poweredby-link" title="Google 日曆"><img src="http://www.google.com/calendar/images/blank.gif" alt=" Google 日曆技術提供 "></a></div>';
 					//+ '<div id="subscribe-link">由 Google 日曆提供</div><a href="http://www.google.com/calendar/render" target="_blank" id="poweredby-link" title="Google 日曆"><img src="http://www.google.com/calendar/images/blank.gif" alt=" Google 日曆技術提供 " style="filter:progid:DXImageTransform.Microsoft.AlphaImageLoader(src=\'http://www.google.com/calendar/images/ext/poweredby.png\',sizingMethod=\'cale\')"></a></div>';
-					+ '<div id="subscribe-link">' + EGCalendarFundamental.localeData[this.locale].PoweredBy +'<a href="http://www.google.com/calendar/render?cid=' + "" + '" target="_blank">' + EGCalendarFundamental.localeData[this.locale].Subscribe +  '</a></div><a href="http://www.google.com/calendar/render" target="_blank" id="poweredby-link" title="Google 日曆"><img src="http://www.google.com/calendar/images/blank.gif" alt=" Google 日曆技術提供 "></a></div>';
+					+ '<div id="subscribe-link">' + EGCalendarFundamental.localeData[this.gcal_locale].PoweredBy +'<a href="http://www.google.com/calendar/render?cid=' + "" + '" target="_blank">' + EGCalendarFundamental.localeData[this.gcal_locale].Subscribe +  '</a></div><a href="http://www.google.com/calendar/render" target="_blank" id="poweredby-link" title="Google 日曆"><img src="http://www.google.com/calendar/images/blank.gif" alt=" Google 日曆技術提供 "></a></div>';
 	 				+ '</body></html>';
 	
 	var content = prefix + header + body + script + nav + this.getMonthTable(today, today.getFullYear(), today.getMonth(), events) + suffix;
+	
+	var message_div = '<div id="message_div">'+EGCalendarFundamental.msg+'</div>';
+	//content+=message_div;
+	
 	//var content = prefix + header + body + nav + month_table + suffix;
  	
 //    var targetName = "icalendar";
    	//var targetFrame = document.getElementById(targetName);
+   	
         var doc = targetFrame.contentDocument;
         if (doc == undefined || doc == null)
             doc = targetFrame.contentWindow.document;
         doc.open();
         doc.write(content);
         doc.close();
-//		document.getElementById("test").innerHTML = this.gcal_title + " / " + this.gcal_timezone + " / " 
-//									+  EGCalendarFundamental.timezones[this.gcal_timezone];
 }
 
 
